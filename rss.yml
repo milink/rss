@@ -1,0 +1,36 @@
+name: Sreality RSS
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # každých 30 minut (GitHub může zpozdit)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - name: Generate feed
+        env:
+          # volitelné: Settings > Secrets and variables > Actions > Variables
+          SREALITY_API_URL: ${{ vars.SREALITY_API_URL }}
+        run: |
+          if [ -z "$SREALITY_API_URL" ]; then unset SREALITY_API_URL; fi
+          python sreality_rss.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "rss-bot"
+          git config user.email "rss-bot@users.noreply.github.com"
+          git add docs/feed.xml
+          git diff --cached --quiet || (git commit -m "Update feed" && git push)
